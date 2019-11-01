@@ -44,18 +44,7 @@ namespace TensorFlow
         public const string TensorFlowLibrary = "libtensorflow";
         
         public delegate void Print(string s);
-        protected abstract Print InternalPrintFunc { get; set; }
-        public static Print PrintFunc
-        {
-            get
-            {
-                return Current.InternalPrintFunc;
-            }
-            set
-            {
-                Current.InternalPrintFunc = value;
-            }
-        }
+        public static Print PrintFunc { get; set; } = new Print((s) => Debug.WriteLine(s));
 
         public static NativeBinding _current;
         public static NativeBinding Current
@@ -91,6 +80,8 @@ namespace TensorFlow
         {
             PrintFunc(msg);
         }
+
+        public virtual bool IsGpu { get; protected set; } = false;
     }
 
     /// <summary>

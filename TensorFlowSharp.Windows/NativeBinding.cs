@@ -11,17 +11,44 @@ namespace TensorFlowSharp.Windows
 {
     public class NativeBinding : TensorFlow.NativeBinding
     {
-        protected override Print InternalPrintFunc { get; set; }
-
-        public bool IsGpu { get; private set; }
-
         [DllImport("kernel32.dll", SetLastError = true)]
         static extern bool SetDllDirectory(string lpPathName);
 
-        private NativeBinding(bool isGpu = false)
+        NativeBinding(bool isGpu = false)
         {
-            InternalPrintFunc = new Print((string s) => { Console.WriteLine(s); });
+            try
+            {
+                InitDLL(isGpu);
+            }
+            catch(Exception ex)
+            {
+                Log($"TF first init errored. isGPU:{isGpu}");
+                Log(ex.ToString());
 
+                if (isGpu)
+                {
+                    try
+                    { 
+                        InitDLL(false);
+                    }
+                    catch(Exception non_ex)
+                    {
+                        Log("gpu exception");
+                        Log(ex.ToString());
+                        Log("cpu exception");
+                        Log(non_ex.ToString());
+                        throw new Exception("gpu, none gpu failed");
+                    }
+                }
+                else
+                {
+                    throw ex;
+                }
+            }
+        }
+
+        void InitDLL(bool isGpu)
+        {
             IsGpu = isGpu;
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
             if (isGpu)
@@ -38,7 +65,16 @@ namespace TensorFlowSharp.Windows
 
         public static void Init(bool isGpu = false)
         {
-            Current = new NativeBinding(isGpu);
+            try
+            {
+                Current = new NativeBinding(isGpu);
+            }
+            catch(Exception ex)
+            {
+                Log("TF Init failed");
+                Log(ex.ToString());
+                Current = null;
+            }
         }
 
         protected override unsafe void InternalMemoryCopy(void* source, void* destination, long destinationSizeInBytes, long sourceBytesToCopy)
